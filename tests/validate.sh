@@ -65,7 +65,7 @@ grep -q '/opt/honcho/current/.venv/bin/python -m alembic upgrade head' install/h
 if grep -q '/opt/honcho/current/.venv/bin/alembic' install/honcho-install.sh; then
   fail "Installer depends on an Alembic console-script shim that may not exist"
 fi
-grep -q "-c 'import alembic'" install/honcho-install.sh \
+grep -q -- "-c 'import alembic'" install/honcho-install.sh \
   || fail "Installer does not verify the Alembic runtime dependency after uv sync"
 pass "Honcho working-directory and Alembic invariants"
 
