@@ -170,6 +170,7 @@ Deriver: active and running as `.venv/bin/python -m src.deriver`; journal showed
 Native health helper passed: PostgreSQL active; Redis active and PING succeeded; API active and listening on TCP/8000; Deriver active; `/health` reported ok; Honcho database encoding UTF8; pgvector 0.8.0 installed; application SQLAlchemy connection succeeded with UTF8 client encoding; release symlink and installation manifest present; no Docker/Podman runtime installed.
 Observed locale warnings: inherited Proxmox locale variables referenced Swedish/en_US locales not generated in the guest. These warnings were non-fatal and did not affect PostgreSQL results. Health helper now normalizes LANG/LC_ALL to Debian C.UTF-8.
 Locale cleanup commits: 971960e5cc8f22560d1271d234f91616c1308b73, eb5c64b1d13047caba2ad9f7d446013d510d2c5c
+Intermediate stability check: API remained active for 5 minutes and Deriver for 4 minutes 43 seconds, and the complete native health helper still passed. This does not yet satisfy the 10-minute continuous-active gate. The retained CT was still running the pre-locale-cleanup health helper at this checkpoint, which explains the repeated non-fatal locale warnings.
 Remaining: API and Deriver must still demonstrate at least 10 minutes continuous active time; external `/docs`, restart recovery, reboot persistence, security checks, and real application/provider functionality remain pending.
 ```
 
