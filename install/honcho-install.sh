@@ -171,19 +171,30 @@ actual_version="$(python3 -c 'import tomllib; print(tomllib.load(open("/var/tmp/
 [[ "$actual_version" == "$HONCHO_VERSION" ]] || fatal "Pinned commit reports Honcho ${actual_version}, expected ${HONCHO_VERSION}"
 ok "Verified upstream Honcho ${HONCHO_VERSION} source"
 
+# Build the virtual environment only after the verified source has reached its
+# final release path. Python console scripts embed absolute interpreter paths in
+# their shebangs, so moving an already-created venv makes those launchers stale.
+info "Promoting verified source to final release path"
+mv "$BUILD_ROOT/source" "$release_dir"
+ok "Promoted verified source to ${release_dir}"
+
 info "Creating pinned Python environment from upstream lockfile"
 runuser -u honcho -- env \
   HOME=/var/lib/honcho \
   TMPDIR=/var/lib/honcho/tmp \
   UV_CACHE_DIR=/var/lib/honcho/.cache/uv \
   UV_LINK_MODE=copy \
-  /usr/local/bin/uv sync --directory "$BUILD_ROOT/source" --frozen --no-install-project --no-group dev
-[[ -x "$BUILD_ROOT/source/.venv/bin/fastapi" ]] || fatal "Honcho virtual environment is missing FastAPI"
-[[ -x "$BUILD_ROOT/source/.venv/bin/python" ]] || fatal "Honcho virtual environment is missing Python"
+  /usr/local/bin/uv sync --directory "$release_dir" --frozen --no-install-project --no-group dev
+[[ -x "$release_dir/.venv/bin/fastapi" ]] || fatal "Honcho virtual environment is missing FastAPI"
+[[ -x "$release_dir/.venv/bin/python" ]] || fatal "Honcho virtual environment is missing Python"
 runuser -u honcho -- env HOME=/var/lib/honcho \
-  "$BUILD_ROOT/source/.venv/bin/python" -c 'import alembic' \
+  "$release_dir/.venv/bin/python" -c 'import alembic' \
   || fatal "Honcho virtual environment is missing the Alembic runtime dependency"
-mv "$BUILD_ROOT/source" "$release_dir"
+if head -n 1 "$release_dir/.venv/bin/fastapi" | grep -Fq "$BUILD_ROOT"; then
+  fatal "FastAPI launcher contains a stale temporary-build interpreter path"
+fi
+head -n 1 "$release_dir/.venv/bin/fastapi" | grep -Fq "$release_dir/.venv/bin/" \
+  || fatal "FastAPI launcher does not reference the final release virtualenv"
 chown -R root:root "$release_dir"
 ln -sfn "$release_dir" /opt/honcho/current
 ok "Installed immutable Honcho release ${release_id}"
