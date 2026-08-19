@@ -26,6 +26,10 @@ ok "Honcho /health reports ok"
 redis-cli ping | grep -qx PONG || fatal "Redis PING failed"
 ok "Redis PING succeeded"
 
+db_encoding="$(runuser -u postgres -- psql -Atq -d postgres -c "SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname='honcho';")"
+[[ "$db_encoding" == "UTF8" ]] || fatal "Honcho database encoding is ${db_encoding:-unknown}, expected UTF8"
+ok "Honcho database encoding is UTF8"
+
 vector_version="$(runuser -u postgres -- psql -Atq -d honcho -c "SELECT extversion FROM pg_extension WHERE extname='vector';")"
 [[ -n "$vector_version" ]] || fatal "pgvector extension is missing from the honcho database"
 ok "pgvector extension is installed (${vector_version})"
@@ -49,12 +53,16 @@ async def main():
         value = await conn.scalar(text("SELECT 1"))
         if value != 1:
             raise SystemExit(1)
+        encoding = await conn.scalar(text("SHOW client_encoding"))
+        normalized = str(encoding).replace("-", "").upper()
+        if normalized != "UTF8":
+            raise SystemExit(f"unexpected client encoding: {encoding}")
     await engine.dispose()
 
 asyncio.run(main())
 PY
 ) || fatal "Application database connection failed"
-ok "Honcho application database connection succeeded"
+ok "Honcho application database connection succeeded with UTF8 client encoding"
 
 [[ -L /opt/honcho/current ]] || fatal "/opt/honcho/current is not a release symlink"
 [[ -f /etc/honcho/installation.json ]] || fatal "Installation manifest is missing"
