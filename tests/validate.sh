@@ -58,6 +58,13 @@ grep -q '^WorkingDirectory=/opt/honcho/current$' systemd/honcho-api.service || f
 grep -q '^WorkingDirectory=/opt/honcho/current$' systemd/honcho-deriver.service || fail "Deriver working directory changed"
 pass "systemd identity/config invariants"
 
+grep -q '^ExecStart=/opt/honcho/current/.venv/bin/python -m fastapi run --host 0.0.0.0 --port 8000 src/main.py$' systemd/honcho-api.service \
+  || fail "API service does not invoke FastAPI through the relocated venv Python module"
+if grep -q '^ExecStart=/opt/honcho/current/.venv/bin/fastapi ' systemd/honcho-api.service; then
+  fail "API service depends on a console-script shebang that becomes stale when the venv is relocated"
+fi
+pass "FastAPI relocated-venv startup invariant"
+
 grep -q 'cd /opt/honcho/current' install/honcho-install.sh || fail "Migrations are not anchored to the Honcho release directory"
 grep -q 'cd /opt/honcho/current' scripts/honcho-healthcheck.sh || fail "Health check Python probe is not anchored to the Honcho release directory"
 grep -q '/opt/honcho/current/.venv/bin/python -m alembic upgrade head' install/honcho-install.sh \
