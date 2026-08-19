@@ -211,8 +211,11 @@ set -a
 # shellcheck source=/dev/null
 source /etc/honcho/environment
 set +a
-runuser -u honcho --preserve-environment -- env HOME=/var/lib/honcho \
-  /opt/honcho/current/.venv/bin/alembic -c /opt/honcho/current/alembic.ini upgrade head
+(
+  cd /opt/honcho/current
+  runuser -u honcho --preserve-environment -- env HOME=/var/lib/honcho \
+    /opt/honcho/current/.venv/bin/alembic upgrade head
+)
 ok "Applied Honcho database migrations"
 
 cat >/etc/honcho/installation.json <<MANIFEST
