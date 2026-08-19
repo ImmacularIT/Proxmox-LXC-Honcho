@@ -28,7 +28,7 @@ Repository/CI checks do not count as Proxmox runtime evidence. Mark an item pass
 - [ ] LXC is unprivileged after creation.
 - [ ] `nesting=1` is present.
 - [ ] keyctl remains disabled.
-- [ ] No Docker/Podman runtime is installed.
+- [x] No Docker/Podman runtime is installed.
 
 ## B. Native package/database installation
 
@@ -43,7 +43,7 @@ Repository/CI checks do not count as Proxmox runtime evidence. Mark an item pass
 - [x] Honcho database encoding is UTF8 with the patched installer.
 - [x] Psycopg session client encoding is UTF8 and PostgreSQL text decodes to `str`.
 - [ ] Verify role `honcho_user` is not superuser with an explicit runtime query.
-- [ ] Redis is reachable locally via the final health check.
+- [x] Redis is reachable locally via the final health check.
 
 ## C. Upstream pin/build
 
@@ -61,9 +61,9 @@ Repository/CI checks do not count as Proxmox runtime evidence. Mark an item pass
 - [x] Database migrations complete successfully through the pinned Alembic head.
 - [ ] API starts and remains active for at least 10 minutes.
 - [ ] Deriver starts and remains active for at least 10 minutes.
-- [ ] `/health` returns `{"status":"ok"}`.
+- [x] `/health` returns `{"status":"ok"}`.
 - [ ] `/docs` loads from another host on the trusted network.
-- [ ] `honcho-lxc-healthcheck` passes.
+- [x] `honcho-lxc-healthcheck` passes.
 - [ ] API restart recovers cleanly.
 - [ ] Deriver restart recovers cleanly.
 - [ ] Full LXC reboot returns both services to active state.
@@ -158,7 +158,19 @@ Fix: API unit invokes FastAPI through the venv interpreter as `.venv/bin/python 
 Fix commits: 15127ad19a292b4ada98549e5b93e5aa63d30995, 8076eec5aef5c05a4b45b82841e4dde827f25833, 579efd3e656e1e15b41cdc6d69456aa053be09ed, 7f389ad0767c4b99c42382bd5669749df106509d
 Manual recovery: exact patched unit was installed and reloaded on CT 210. `/opt/honcho/current/.venv/bin/python` reported Python 3.11.14. The API then started successfully as PID 6502, imported `src.main:app`, connected to Redis, completed application startup, and Uvicorn bound `0.0.0.0:8000`.
 Observed active duration before administrative stop: 2 minutes 48 seconds. At 20:51:31 UTC systemd sent SIGTERM, Uvicorn performed a clean application shutdown, systemd recorded `Result=success`, and `NRestarts=0`. This was an explicit service stop from the debugging workflow, not an application crash or sustained-runtime failure.
-The 10-minute sustained-service gate, `/health`, Deriver startup, and full native health check remain pending.
+```
+
+### 2026-08-19 - API, Deriver, and native health check
+
+```text
+CT ID: 210
+Result: PASSED immediate native service health checks.
+API: restarted after the administrative stop and `/health` returned `{"status":"ok"}`.
+Deriver: active and running as `.venv/bin/python -m src.deriver`; journal showed `Starting deriver queue processor`, `Running main loop`, successful Redis cache connection, and `ReconcilerScheduler started` with `sync_vectors` and `cleanup_queue` tasks.
+Native health helper passed: PostgreSQL active; Redis active and PING succeeded; API active and listening on TCP/8000; Deriver active; `/health` reported ok; Honcho database encoding UTF8; pgvector 0.8.0 installed; application SQLAlchemy connection succeeded with UTF8 client encoding; release symlink and installation manifest present; no Docker/Podman runtime installed.
+Observed locale warnings: inherited Proxmox locale variables referenced Swedish/en_US locales not generated in the guest. These warnings were non-fatal and did not affect PostgreSQL results. Health helper now normalizes LANG/LC_ALL to Debian C.UTF-8.
+Locale cleanup commits: 971960e5cc8f22560d1271d234f91616c1308b73, eb5c64b1d13047caba2ad9f7d446013d510d2c5c
+Remaining: API and Deriver must still demonstrate at least 10 minutes continuous active time; external `/docs`, restart recovery, reboot persistence, security checks, and real application/provider functionality remain pending.
 ```
 
 ## Promotion gate
