@@ -36,8 +36,10 @@ set -a
 # shellcheck source=/dev/null
 source /etc/honcho/environment
 set +a
-runuser -u honcho --preserve-environment -- env HOME=/var/lib/honcho \
-  /opt/honcho/current/.venv/bin/python - <<'PY' >/dev/null || fatal "Application database connection failed"
+(
+  cd /opt/honcho/current
+  runuser -u honcho --preserve-environment -- env HOME=/var/lib/honcho \
+    /opt/honcho/current/.venv/bin/python - <<'PY' >/dev/null
 import asyncio
 from sqlalchemy import text
 from src.db import engine
@@ -51,6 +53,7 @@ async def main():
 
 asyncio.run(main())
 PY
+) || fatal "Application database connection failed"
 ok "Honcho application database connection succeeded"
 
 [[ -L /opt/honcho/current ]] || fatal "/opt/honcho/current is not a release symlink"
