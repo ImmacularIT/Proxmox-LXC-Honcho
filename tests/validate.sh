@@ -69,6 +69,22 @@ grep -q -- "-c 'import alembic'" install/honcho-install.sh \
   || fail "Installer does not verify the Alembic runtime dependency after uv sync"
 pass "Honcho working-directory and Alembic invariants"
 
+grep -q -- '--encoding=UTF8 --template=template0' install/honcho-install.sh \
+  || fail "Installer does not create the Honcho database explicitly as UTF8 from template0"
+grep -q 'Honcho database encoding validation failed' install/honcho-install.sh \
+  || fail "Installer does not validate the existing Honcho database encoding"
+grep -q "ALTER DATABASE honcho SET client_encoding TO 'UTF8'" install/honcho-install.sh \
+  || fail "Installer does not set the Honcho database client encoding default to UTF8"
+grep -q 'honcho?client_encoding=utf8' install/honcho-install.sh \
+  || fail "Honcho DB URI does not force UTF8 client encoding"
+grep -q 'conn.info.encoding' install/honcho-install.sh \
+  || fail "Installer does not probe Psycopg client encoding before migrations"
+grep -q 'isinstance(version, str)' install/honcho-install.sh \
+  || fail "Installer does not verify PostgreSQL text decoding before migrations"
+grep -q 'Honcho database encoding is UTF8' scripts/honcho-healthcheck.sh \
+  || fail "Health check does not verify UTF8 database encoding"
+pass "PostgreSQL UTF8 invariants"
+
 grep -q 'write_env_value TELEMETRY_ENABLED "false"' install/honcho-install.sh || fail "Telemetry is not explicitly disabled"
 grep -q 'write_env_value SENTRY_ENABLED "false"' install/honcho-install.sh || fail "Sentry is not explicitly disabled"
 pass "Telemetry defaults"
