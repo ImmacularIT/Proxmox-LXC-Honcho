@@ -1,0 +1,33 @@
+[Unit]
+Description=Honcho Deriver Worker
+After=honcho-api.service postgresql.service redis-server.service
+Wants=honcho-api.service postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=honcho
+Group=honcho
+WorkingDirectory=/opt/honcho/current
+EnvironmentFile=/etc/honcho/environment
+Environment=HOME=/var/lib/honcho
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/honcho/current/.venv/bin/python -m src.deriver
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+ReadWritePaths=/var/lib/honcho
+
+[Install]
+WantedBy=multi-user.target

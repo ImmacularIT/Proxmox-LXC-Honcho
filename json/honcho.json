@@ -1,0 +1,48 @@
+{
+  "name": "Honcho",
+  "slug": "honcho",
+  "categories": [
+    20
+  ],
+  "date_created": "2026-08-19",
+  "type": "ct",
+  "updateable": false,
+  "privileged": false,
+  "interface_port": 8000,
+  "documentation": "https://github.com/ImmacularIT/Proxmox-LXC-Honcho",
+  "website": "https://github.com/plastic-labs/honcho",
+  "config_path": "/etc/honcho/environment",
+  "description": "An unofficial native Debian 13 AMD64 Proxmox LXC adaptation of Honcho using PostgreSQL + pgvector, Redis, Python, and systemd without a nested application container runtime.",
+  "install_methods": [
+    {
+      "type": "default",
+      "script": "ct/honcho.sh",
+      "resources": {
+        "cpu": 2,
+        "ram": 4096,
+        "hdd": 20,
+        "os": "debian",
+        "version": "13"
+      }
+    }
+  ],
+  "notes": [
+    {
+      "type": "warning",
+      "text": "Development status: the real-Proxmox runtime matrix has not yet been marked complete. Do not treat the development branch as a runtime-certified release."
+    },
+    {
+      "type": "info",
+      "text": "The LXC is unprivileged. nesting=1 is enabled for Debian 13/Systemd LXC compatibility; keyctl remains disabled. Honcho does not use Docker, Podman, Kubernetes, or another nested application runtime."
+    },
+    {
+      "type": "info",
+      "text": "Honcho requires an LLM provider. The installer supports OpenAI direct and an OpenAI-compatible endpoint mode."
+    },
+    {
+      "type": "info",
+      "text": "The API listens on port 8000. PostgreSQL and Redis remain local services inside the container."
+    }
+  ],
+  "repository_url": "https://github.com/ImmacularIT/Proxmox-LXC-Honcho"
+}

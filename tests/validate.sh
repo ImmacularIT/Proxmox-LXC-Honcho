@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
+pass() { printf 'PASS: %s\n' "$1"; }
+
+for file in ct/honcho.sh install/honcho-install.sh scripts/honcho-healthcheck.sh lib/versions.sh tests/validate.sh; do
+  bash -n "$file" || fail "bash syntax: $file"
+done
+pass "Bash syntax"
+
+python3 -m json.tool json/honcho.json >/dev/null || fail "json/honcho.json is invalid JSON"
+pass "Project metadata JSON"
+
+# shellcheck source=/dev/null
+source lib/versions.sh
+[[ "$HONCHO_COMMIT" =~ ^[0-9a-f]{40}$ ]] || fail "HONCHO_COMMIT is not an exact SHA"
+[[ "$HONCHO_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "HONCHO_VERSION is not semver-like"
+[[ "$UV_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "UV_VERSION is not pinned"
+[[ "$TARGET_DEBIAN_VERSION" == "13" ]] || fail "Target Debian version changed unexpectedly"
+[[ "$TARGET_ARCH" == "amd64" ]] || fail "Target architecture changed unexpectedly"
+pass "Canonical version pins"
+
+if grep -REn --exclude='validate.sh' --exclude='README.md' --exclude='PROJECT-HANDOFF.md' --exclude='RUNTIME-TEST-PLAN.md' \
+  '(docker[[:space:]]+(run|compose|pull|build)|podman[[:space:]]+(run|pull|build)|apt(-get)?[[:space:]].*(docker|podman))' \
+  ct install lib scripts systemd json .github 2>/dev/null; then
+  fail "Nested application runtime command found"
+fi
+pass "No Docker/Podman installation/runtime commands"
+
+if grep -REn --exclude='validate.sh' 'plastic-labs/honcho(.git)?[^\n]*(main|master)' ct install lib scripts systemd 2>/dev/null; then
+  fail "Moving upstream Honcho branch reference found in runtime code"
+fi
+pass "No moving upstream Honcho branch reference"
+
+grep -q 'git -C "$BUILD_ROOT/source" fetch --depth 1 origin "$HONCHO_COMMIT"' install/honcho-install.sh \
+  || fail "Installer does not fetch exact Honcho commit"
+grep -q 'actual_commit=.*rev-parse HEAD' install/honcho-install.sh \
+  || fail "Installer does not verify Honcho checkout"
+pass "Exact upstream checkout invariants"
+
+grep -q -- '--unprivileged 1' ct/honcho.sh || fail "Launcher does not force unprivileged LXC"
+grep -q -- '--features nesting=1' ct/honcho.sh || fail "Launcher does not set nesting=1"
+if grep -Eq 'keyctl[=, ]+1|features[^\n]*keyctl' ct/honcho.sh; then fail "Launcher enables keyctl"; fi
+pass "LXC privilege/features invariants"
+
+grep -q '^User=honcho$' systemd/honcho-api.service || fail "API service is not honcho user"
+grep -q '^User=honcho$' systemd/honcho-deriver.service || fail "Deriver service is not honcho user"
+grep -q '^EnvironmentFile=/etc/honcho/environment$' systemd/honcho-api.service || fail "API environment path changed"
+grep -q '^EnvironmentFile=/etc/honcho/environment$' systemd/honcho-deriver.service || fail "Deriver environment path changed"
+pass "systemd identity/config invariants"
+
+grep -q 'write_env_value TELEMETRY_ENABLED "false"' install/honcho-install.sh || fail "Telemetry is not explicitly disabled"
+grep -q 'write_env_value SENTRY_ENABLED "false"' install/honcho-install.sh || fail "Sentry is not explicitly disabled"
+pass "Telemetry defaults"
+
+if grep -REn '(sk-[A-Za-z0-9_-]{20,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|ghp_[A-Za-z0-9]{20,})' . \
+  --exclude-dir=.git --exclude='validate.sh'; then
+  fail "Possible secret/private key material found"
+fi
+pass "Obvious secret patterns"
+
+[[ -x ct/honcho.sh ]] || fail "ct/honcho.sh is not executable"
+[[ -x install/honcho-install.sh ]] || fail "install/honcho-install.sh is not executable"
+[[ -x scripts/honcho-healthcheck.sh ]] || fail "healthcheck is not executable"
+pass "Executable script modes"
+
+printf '\nAll static project validation checks passed.\n'
