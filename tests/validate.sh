@@ -65,6 +65,20 @@ if grep -q '^ExecStart=/opt/honcho/current/.venv/bin/fastapi ' systemd/honcho-ap
 fi
 pass "FastAPI relocated-venv startup invariant"
 
+grep -q 'mv "$BUILD_ROOT/source" "$release_dir"' install/honcho-install.sh \
+  || fail "Installer does not promote verified source to the final release path"
+grep -q '/usr/local/bin/uv sync --directory "$release_dir" --frozen --no-install-project --no-group dev' install/honcho-install.sh \
+  || fail "Installer does not create the Honcho venv at the final release path"
+if grep -q '/usr/local/bin/uv sync --directory "$BUILD_ROOT/source"' install/honcho-install.sh; then
+  fail "Installer still creates the venv under the temporary build path"
+fi
+move_line="$(grep -nF 'mv "$BUILD_ROOT/source" "$release_dir"' install/honcho-install.sh | head -n1 | cut -d: -f1)"
+sync_line="$(grep -nF '/usr/local/bin/uv sync --directory "$release_dir"' install/honcho-install.sh | head -n1 | cut -d: -f1)"
+[[ "$move_line" -lt "$sync_line" ]] || fail "Installer creates the venv before the source reaches its final release path"
+grep -q 'FastAPI launcher contains a stale temporary-build interpreter path' install/honcho-install.sh \
+  || fail "Installer does not reject stale temporary-path console-script shebangs"
+pass "Final-path virtualenv build invariant"
+
 grep -q 'cd /opt/honcho/current' install/honcho-install.sh || fail "Migrations are not anchored to the Honcho release directory"
 grep -q 'cd /opt/honcho/current' scripts/honcho-healthcheck.sh || fail "Health check Python probe is not anchored to the Honcho release directory"
 grep -q '/opt/honcho/current/.venv/bin/python -m alembic upgrade head' install/honcho-install.sh \
