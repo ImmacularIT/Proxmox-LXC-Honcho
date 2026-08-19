@@ -66,7 +66,7 @@ Repository/CI checks do not count as Proxmox runtime evidence. Mark an item pass
 - [x] `honcho-lxc-healthcheck` passes.
 - [ ] API restart recovers cleanly.
 - [ ] Deriver restart recovers cleanly.
-- [ ] Full LXC reboot returns both services to active state.
+- [x] Full LXC reboot returns both services to active state.
 
 ## E. Application functionality
 
@@ -97,8 +97,8 @@ Run these tests for each provider mode that will be advertised as supported.
 - [ ] `/etc/honcho/installation.json` is root-only.
 - [ ] Honcho long-running processes run as `honcho`, not root.
 - [ ] Database role is not PostgreSQL superuser.
-- [ ] PostgreSQL data survives LXC reboot.
-- [ ] Redis restarts cleanly after LXC reboot.
+- [x] PostgreSQL data survives LXC reboot.
+- [x] Redis restarts cleanly after LXC reboot.
 - [ ] Honcho application data survives API/Deriver restart and LXC reboot.
 - [ ] No provider API key appears in Proxmox CT description.
 - [ ] No provider API key appears in repository files.
@@ -174,7 +174,19 @@ Intermediate stability check: API remained active for 5 minutes and Deriver for 
 Locale cleanup runtime verification: the patched health helper was installed on CT 210 and the complete health check passed again with no locale warnings.
 Invalid test-helper result: a proposed 10-minute checker compared `/proc/uptime` with systemd `ActiveEnterTimestampMonotonic`. In this LXC environment those values were not in a directly comparable time domain and produced negative durations. This was a test-script error, not a Honcho service failure; wall-clock `ActiveEnterTimestamp` checks are used instead.
 Sustained stability verification: wall-clock service timestamps showed API continuous uptime of 1017 seconds and Deriver continuous uptime of 955 seconds. Both exceeded the 600-second gate, and the complete native health helper passed again immediately afterward with clean locale output.
-Remaining: external `/docs`, explicit restart recovery, reboot persistence, security checks, and real application/provider functionality remain pending.
+```
+
+### 2026-08-19 - LXC reboot and persistence
+
+```text
+CT ID: 210
+Result: PASSED reboot recovery and infrastructure persistence checks.
+Immediately after reboot, guest uptime reported 0 minutes. PostgreSQL, Redis, honcho-api, and honcho-deriver were all enabled and active.
+API `/health` returned `{"status":"ok"}` after boot.
+Database state persisted: `alembic_version` remained `e4eba9cfaa6f`, Honcho database encoding remained UTF8, and pgvector 0.8.0 remained installed.
+Release state persisted: `/opt/honcho/current` resolved to `/opt/honcho/releases/3.0.12-bd5fd4df62b5` and `/etc/honcho/installation.json` remained present.
+The complete native health helper passed after reboot, including Redis PING and the application SQLAlchemy database probe.
+This verifies service auto-start, PostgreSQL persistence, and Redis restart across LXC reboot. It does not yet prove persistence of real Honcho workspace/session/message data because application data has not yet been created for that test.
 ```
 
 ## Promotion gate
