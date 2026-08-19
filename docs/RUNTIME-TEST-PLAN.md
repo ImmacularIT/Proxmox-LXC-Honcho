@@ -154,9 +154,10 @@ Rerun: UTF8 probe passed and the complete Alembic migration chain reached head s
 CT ID: 210
 Passed before failure: PostgreSQL UTF8/client decoding validation and complete database migration chain.
 First API failure: systemd status 203/EXEC because the generated `.venv/bin/fastapi` console script retained its pre-relocation interpreter path after the venv was moved from `/var/tmp` into the immutable release directory.
-Mitigation: API unit changed to invoke FastAPI through the venv interpreter as `.venv/bin/python -m fastapi`.
-Fix commits: 15127ad19a292b4ada98549e5b93e5aa63d30995, 8076eec5aef5c05a4b45b82841e4dde827f25833
-Manual recovery result: port 8000 still did not become reachable before the test was interrupted. The current API journal is required to determine the next startup error; no further root cause is assumed yet.
+Fix: API unit invokes FastAPI through the venv interpreter as `.venv/bin/python -m fastapi`; fresh installs now move the verified source to the final immutable release path before `uv sync`, so generated console-script shebangs reference the permanent venv path.
+Fix commits: 15127ad19a292b4ada98549e5b93e5aa63d30995, 8076eec5aef5c05a4b45b82841e4dde827f25833, 579efd3e656e1e15b41cdc6d69456aa053be09ed, 7f389ad0767c4b99c42382bd5669749df106509d
+Manual recovery: exact patched unit was installed and reloaded on CT 210. `/opt/honcho/current/.venv/bin/python` reported Python 3.11.14. The API then started successfully as PID 6502, imported `src.main:app`, connected to Redis, completed application startup, and Uvicorn bound `0.0.0.0:8000`.
+Observed active duration at evidence capture: 1 minute 5 seconds. The 10-minute sustained-service gate, `/health`, Deriver startup, and full native health check remain pending.
 ```
 
 ## Promotion gate
