@@ -51,11 +51,21 @@ grep -q '^User=honcho$' systemd/honcho-api.service || fail "API service is not h
 grep -q '^User=honcho$' systemd/honcho-deriver.service || fail "Deriver service is not honcho user"
 grep -q '^EnvironmentFile=/etc/honcho/environment$' systemd/honcho-api.service || fail "API environment path changed"
 grep -q '^EnvironmentFile=/etc/honcho/environment$' systemd/honcho-deriver.service || fail "Deriver environment path changed"
+grep -q '^WorkingDirectory=/opt/honcho/current$' systemd/honcho-api.service || fail "API working directory changed"
+grep -q '^WorkingDirectory=/opt/honcho/current$' systemd/honcho-deriver.service || fail "Deriver working directory changed"
 pass "systemd identity/config invariants"
+
+grep -q 'cd /opt/honcho/current' install/honcho-install.sh || fail "Migrations are not anchored to the Honcho release directory"
+grep -q 'cd /opt/honcho/current' scripts/honcho-healthcheck.sh || fail "Health check Python probe is not anchored to the Honcho release directory"
+pass "Honcho working-directory invariants"
 
 grep -q 'write_env_value TELEMETRY_ENABLED "false"' install/honcho-install.sh || fail "Telemetry is not explicitly disabled"
 grep -q 'write_env_value SENTRY_ENABLED "false"' install/honcho-install.sh || fail "Sentry is not explicitly disabled"
 pass "Telemetry defaults"
+
+grep -q '"updateable": false' json/honcho.json || fail "Development metadata unexpectedly advertises updates"
+grep -q '"privileged": false' json/honcho.json || fail "Project metadata unexpectedly advertises a privileged CT"
+pass "Development metadata safety invariants"
 
 if grep -REn '(sk-[A-Za-z0-9_-]{20,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|ghp_[A-Za-z0-9]{20,})' . \
   --exclude-dir=.git --exclude='validate.sh'; then
