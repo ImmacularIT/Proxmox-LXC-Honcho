@@ -109,15 +109,32 @@ if runuser -u postgres -- psql -Atqc "SELECT 1 FROM pg_roles WHERE rolname='honc
 else
   runuser -u postgres -- psql -v ON_ERROR_STOP=1 -c "CREATE ROLE honcho_user LOGIN PASSWORD '${DB_PASSWORD}';" >/dev/null
 fi
+
 if ! runuser -u postgres -- psql -Atqc "SELECT 1 FROM pg_database WHERE datname='honcho'" | grep -qx 1; then
-  runuser -u postgres -- createdb -O honcho_user honcho
+  runuser -u postgres -- createdb --owner=honcho_user --encoding=UTF8 --template=template0 honcho
+else
+  db_encoding="$(runuser -u postgres -- psql -Atq -d postgres -c "SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname='honcho';")"
+  if [[ "$db_encoding" != "UTF8" ]]; then
+    user_table_count="$(runuser -u postgres -- psql -Atq -d honcho -c "SELECT count(*) FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema');")"
+    if [[ ! -e /etc/honcho/installation.json && "$user_table_count" == "0" ]]; then
+      warn "Incomplete Honcho database uses ${db_encoding}; recreating empty database as UTF8"
+      runuser -u postgres -- dropdb honcho
+      runuser -u postgres -- createdb --owner=honcho_user --encoding=UTF8 --template=template0 honcho
+    else
+      fatal "Existing honcho database uses ${db_encoding}; UTF8 is required. Refusing to replace a database that may contain application data"
+    fi
+  fi
 fi
+
+db_encoding="$(runuser -u postgres -- psql -Atq -d postgres -c "SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname='honcho';")"
+[[ "$db_encoding" == "UTF8" ]] || fatal "Honcho database encoding validation failed: ${db_encoding}"
+runuser -u postgres -- psql -v ON_ERROR_STOP=1 -d postgres -c "ALTER DATABASE honcho SET client_encoding TO 'UTF8';" >/dev/null
 runuser -u postgres -- psql -v ON_ERROR_STOP=1 -d honcho <<'SQL' >/dev/null
 CREATE EXTENSION IF NOT EXISTS vector;
 ALTER SCHEMA public OWNER TO honcho_user;
 GRANT ALL ON SCHEMA public TO honcho_user;
 SQL
-ok "Provisioned honcho database with pgvector"
+ok "Provisioned UTF8 honcho database with pgvector"
 
 info "Installing project version manifest"
 install -d -o root -g root -m 0755 "$LIB_DIR"
@@ -184,7 +201,7 @@ info "Writing protected Honcho runtime configuration"
 install -d -o root -g honcho -m 0750 /etc/honcho
 : >/etc/honcho/environment
 chmod 0600 /etc/honcho/environment
-write_env_value DB_CONNECTION_URI "postgresql+psycopg://honcho_user:${DB_PASSWORD}@127.0.0.1:5432/honcho"
+write_env_value DB_CONNECTION_URI "postgresql+psycopg://honcho_user:${DB_PASSWORD}@127.0.0.1:5432/honcho?client_encoding=utf8"
 write_env_value CACHE_ENABLED "true"
 write_env_value CACHE_URL "redis://127.0.0.1:6379/0?suppress=true"
 write_env_value AUTH_USE_AUTH "false"
@@ -211,11 +228,31 @@ if [[ "$HONCHO_LLM_MODE" == "compatible" ]]; then
 fi
 ok "Created /etc/honcho/environment"
 
-info "Running Honcho database migrations"
+info "Validating PostgreSQL client encoding through Honcho venv"
 set -a
 # shellcheck source=/dev/null
 source /etc/honcho/environment
 set +a
+(
+  cd /opt/honcho/current
+  runuser -u honcho --preserve-environment -- env HOME=/var/lib/honcho \
+    /opt/honcho/current/.venv/bin/python - <<'PY'
+import os
+import psycopg
+
+uri = os.environ["DB_CONNECTION_URI"].replace("postgresql+psycopg://", "postgresql://", 1)
+with psycopg.connect(uri) as conn:
+    encoding = conn.info.encoding.replace("-", "").lower()
+    version = conn.execute("SELECT pg_catalog.version()").fetchone()[0]
+    if encoding != "utf8":
+        raise SystemExit(f"unexpected PostgreSQL client encoding: {conn.info.encoding}")
+    if not isinstance(version, str):
+        raise SystemExit(f"PostgreSQL version query returned {type(version).__name__}, expected str")
+PY
+) || fatal "PostgreSQL client encoding validation failed"
+ok "PostgreSQL client encoding is UTF8 and text decoding is active"
+
+info "Running Honcho database migrations"
 (
   cd /opt/honcho/current
   runuser -u honcho --preserve-environment -- env HOME=/var/lib/honcho \
@@ -230,7 +267,7 @@ cat >/etc/honcho/installation.json <<MANIFEST
   "upstream_commit": "${HONCHO_COMMIT}",
   "uv_version": "${UV_VERSION}",
   "postgresql_version": "${PG_VERSION}",
-  "database": "PostgreSQL + pgvector",
+  "database": "PostgreSQL + pgvector (UTF8)",
   "cache": "Redis",
   "llm_mode": "${HONCHO_LLM_MODE}",
   "operating_system": "Debian 13",
