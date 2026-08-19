@@ -12,7 +12,7 @@ EnvironmentFile=/etc/honcho/environment
 Environment=HOME=/var/lib/honcho
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/opt/honcho/current/.venv/bin/fastapi run --host 0.0.0.0 --port 8000 src/main.py
+ExecStart=/opt/honcho/current/.venv/bin/python -m fastapi run --host 0.0.0.0 --port 8000 src/main.py
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
