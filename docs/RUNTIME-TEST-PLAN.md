@@ -59,8 +59,8 @@ Repository/CI checks do not count as Proxmox runtime evidence. Mark an item pass
 
 - [x] `systemd-analyze verify` passes during service-file installation.
 - [x] Database migrations complete successfully through the pinned Alembic head.
-- [ ] API starts and remains active for at least 10 minutes.
-- [ ] Deriver starts and remains active for at least 10 minutes.
+- [x] API starts and remains active for at least 10 minutes.
+- [x] Deriver starts and remains active for at least 10 minutes.
 - [x] `/health` returns `{"status":"ok"}`.
 - [ ] `/docs` loads from another host on the trusted network.
 - [x] `honcho-lxc-healthcheck` passes.
@@ -173,7 +173,8 @@ Locale cleanup commits: 971960e5cc8f22560d1271d234f91616c1308b73, eb5c64b1d13047
 Intermediate stability check: API remained active for 5 minutes and Deriver for 4 minutes 43 seconds, and the complete native health helper still passed. This does not yet satisfy the 10-minute continuous-active gate. The retained CT was still running the pre-locale-cleanup health helper at this checkpoint, which explains the repeated non-fatal locale warnings.
 Locale cleanup runtime verification: the patched health helper was installed on CT 210 and the complete health check passed again with no locale warnings.
 Invalid test-helper result: a proposed 10-minute checker compared `/proc/uptime` with systemd `ActiveEnterTimestampMonotonic`. In this LXC environment those values were not in a directly comparable time domain and produced negative durations. This was a test-script error, not a Honcho service failure; wall-clock `ActiveEnterTimestamp` checks are used instead.
-Remaining: API and Deriver must still demonstrate at least 10 minutes continuous active time; external `/docs`, restart recovery, reboot persistence, security checks, and real application/provider functionality remain pending.
+Sustained stability verification: wall-clock service timestamps showed API continuous uptime of 1017 seconds and Deriver continuous uptime of 955 seconds. Both exceeded the 600-second gate, and the complete native health helper passed again immediately afterward with clean locale output.
+Remaining: external `/docs`, explicit restart recovery, reboot persistence, security checks, and real application/provider functionality remain pending.
 ```
 
 ## Promotion gate
