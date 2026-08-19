@@ -163,6 +163,9 @@ runuser -u honcho -- env \
   /usr/local/bin/uv sync --directory "$BUILD_ROOT/source" --frozen --no-install-project --no-group dev
 [[ -x "$BUILD_ROOT/source/.venv/bin/fastapi" ]] || fatal "Honcho virtual environment is missing FastAPI"
 [[ -x "$BUILD_ROOT/source/.venv/bin/python" ]] || fatal "Honcho virtual environment is missing Python"
+runuser -u honcho -- env HOME=/var/lib/honcho \
+  "$BUILD_ROOT/source/.venv/bin/python" -c 'import alembic' \
+  || fatal "Honcho virtual environment is missing the Alembic runtime dependency"
 mv "$BUILD_ROOT/source" "$release_dir"
 chown -R root:root "$release_dir"
 ln -sfn "$release_dir" /opt/honcho/current
@@ -216,7 +219,7 @@ set +a
 (
   cd /opt/honcho/current
   runuser -u honcho --preserve-environment -- env HOME=/var/lib/honcho \
-    /opt/honcho/current/.venv/bin/alembic upgrade head
+    /opt/honcho/current/.venv/bin/python -m alembic upgrade head
 )
 ok "Applied Honcho database migrations"
 
