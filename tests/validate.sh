@@ -12,6 +12,12 @@ for file in ct/honcho.sh install/honcho-install.sh scripts/honcho-healthcheck.sh
 done
 pass "Bash syntax"
 
+grep -q '^export LANG=C.UTF-8$' scripts/honcho-healthcheck.sh \
+  || fail "Health check does not normalize LANG to C.UTF-8"
+grep -q '^export LC_ALL=C.UTF-8$' scripts/honcho-healthcheck.sh \
+  || fail "Health check does not normalize LC_ALL to C.UTF-8"
+pass "Healthcheck locale normalization"
+
 python3 -m json.tool json/honcho.json >/dev/null || fail "json/honcho.json is invalid JSON"
 pass "Project metadata JSON"
 
