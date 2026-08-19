@@ -60,7 +60,14 @@ pass "systemd identity/config invariants"
 
 grep -q 'cd /opt/honcho/current' install/honcho-install.sh || fail "Migrations are not anchored to the Honcho release directory"
 grep -q 'cd /opt/honcho/current' scripts/honcho-healthcheck.sh || fail "Health check Python probe is not anchored to the Honcho release directory"
-pass "Honcho working-directory invariants"
+grep -q '/opt/honcho/current/.venv/bin/python -m alembic upgrade head' install/honcho-install.sh \
+  || fail "Migrations do not invoke Alembic through the pinned venv Python module"
+if grep -q '/opt/honcho/current/.venv/bin/alembic' install/honcho-install.sh; then
+  fail "Installer depends on an Alembic console-script shim that may not exist"
+fi
+grep -q "-c 'import alembic'" install/honcho-install.sh \
+  || fail "Installer does not verify the Alembic runtime dependency after uv sync"
+pass "Honcho working-directory and Alembic invariants"
 
 grep -q 'write_env_value TELEMETRY_ENABLED "false"' install/honcho-install.sh || fail "Telemetry is not explicitly disabled"
 grep -q 'write_env_value SENTRY_ENABLED "false"' install/honcho-install.sh || fail "Sentry is not explicitly disabled"
