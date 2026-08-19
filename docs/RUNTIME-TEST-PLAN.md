@@ -32,28 +32,30 @@ Repository/CI checks do not count as Proxmox runtime evidence. Mark an item pass
 
 ## B. Native package/database installation
 
-- [ ] PostgreSQL service is active.
-- [ ] Redis service is active.
-- [ ] Detected PostgreSQL major version is correct.
-- [ ] Matching Debian pgvector package installs.
-- [ ] Database `honcho` exists.
-- [ ] Role `honcho_user` exists and is not superuser.
-- [ ] `vector` extension exists in `honcho`.
-- [ ] Random DB password is stored only in root-protected runtime config.
-- [ ] Redis is reachable locally.
+- [x] PostgreSQL service is active during installation.
+- [x] Redis service is active during installation.
+- [x] Detected PostgreSQL major version is accepted by the installer.
+- [x] Matching Debian pgvector package installs.
+- [x] Database `honcho` exists.
+- [x] Role `honcho_user` exists.
+- [x] `vector` extension exists in `honcho`.
+- [x] Random DB password is written to protected runtime config.
+- [ ] Verify role `honcho_user` is not superuser with an explicit runtime query.
+- [ ] Redis is reachable locally via the final health check.
 
 ## C. Upstream pin/build
 
-- [ ] uv reports pinned version 0.9.24.
-- [ ] Git checkout equals the pinned 40-character Honcho commit.
-- [ ] Upstream `pyproject.toml` reports 3.0.12.
-- [ ] `uv sync --frozen --no-install-project --no-group dev` succeeds.
-- [ ] FastAPI executable exists in the release venv.
-- [ ] `/opt/honcho/current` points at the expected immutable release.
+- [x] uv installation step succeeds with pinned version 0.9.24.
+- [x] Git checkout equals the pinned 40-character Honcho commit.
+- [x] Upstream `pyproject.toml` reports 3.0.12.
+- [x] `uv sync --frozen --no-install-project --no-group dev` succeeds.
+- [x] FastAPI executable exists in the release venv.
+- [x] `/opt/honcho/current` points at the expected immutable release.
+- [ ] Alembic module import check succeeds with the patched installer.
 
 ## D. Services
 
-- [ ] `systemd-analyze verify` passes in the completed LXC.
+- [x] `systemd-analyze verify` passes during service-file installation.
 - [ ] API starts and remains active for at least 10 minutes.
 - [ ] Deriver starts and remains active for at least 10 minutes.
 - [ ] `/health` returns `{"status":"ok"}`.
@@ -106,7 +108,7 @@ Run these tests for each provider mode that will be advertised as supported.
 - [ ] Redis stopped: health helper fails explicitly on Redis.
 - [ ] API stopped: health helper fails explicitly on API.
 - [ ] Deriver stopped: health helper fails explicitly on Deriver.
-- [ ] Failed installer offers keep/destroy choice.
+- [x] Failed launcher-managed installer keeps CT for debugging by default.
 
 ## Evidence record
 
@@ -121,7 +123,23 @@ Result: FAILED during pinned upstream checkout verification
 Observed: clone/fetch/checkout as honcho succeeded, then root-owned `git rev-parse HEAD` triggered Git safe.directory/dubious-ownership protection.
 Fix: commit verification changed to run as the checkout owner (`runuser -u honcho -- git ... rev-parse HEAD`). Regression validation added to reject the root-owned pattern.
 Fix commits: 4820cb6b89e427cb0add2815c19a1f27d5d5d427 and c553c22b89c3b817447d1bd07c7db56a198bae9a
-Rerun: pending on retained CT 210
+Rerun: completed past the original failure point.
+```
+
+### 2026-08-19 - retained CT 210 rerun
+
+```text
+Date: 2026-08-19
+Tester: maintainer
+CT ID: 210
+Honcho commit: bd5fd4df62b5002b7aeff6e7f5a5237eb7157260
+Result: FAILED at database migration invocation
+Passed before failure: exact checkout verification, upstream version check, uv sync, FastAPI/Python venv checks, immutable release promotion, systemd unit verification, protected runtime configuration creation.
+Observed: `/opt/honcho/current/.venv/bin/alembic` did not exist when the migration step attempted to execute the console-script path.
+Upstream evidence: Alembic is a normal Honcho runtime dependency. uv documents that `--no-install-project` omits the current project while retaining its dependencies.
+Fix: verify `import alembic` immediately after uv sync and invoke migrations as `/opt/honcho/current/.venv/bin/python -m alembic upgrade head` from `/opt/honcho/current`.
+Fix commits: a55f4c21199e33f55069037155f63758cbe73faa, e2564ab4155abbac9417198a3907aa19480a3960, 2b88ba05f4f266fa9d41171372f4fc581107ad30
+Rerun: pending on retained CT 210.
 ```
 
 Record subsequent real validation here before promotion:
