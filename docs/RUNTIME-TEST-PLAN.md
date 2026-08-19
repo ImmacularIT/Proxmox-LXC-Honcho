@@ -42,7 +42,7 @@ Repository/CI checks do not count as Proxmox runtime evidence. Mark an item pass
 - [x] Random DB password is written to protected runtime config.
 - [x] Honcho database encoding is UTF8 with the patched installer.
 - [x] Psycopg session client encoding is UTF8 and PostgreSQL text decodes to `str`.
-- [ ] Verify role `honcho_user` is not superuser with an explicit runtime query.
+- [x] Verify role `honcho_user` is not superuser with an explicit runtime query.
 - [x] Redis is reachable locally via the final health check.
 
 ## C. Upstream pin/build
@@ -64,8 +64,8 @@ Repository/CI checks do not count as Proxmox runtime evidence. Mark an item pass
 - [x] `/health` returns `{"status":"ok"}`.
 - [ ] `/docs` loads from another host on the trusted network.
 - [x] `honcho-lxc-healthcheck` passes.
-- [ ] API restart recovers cleanly.
-- [ ] Deriver restart recovers cleanly.
+- [x] API restart recovers cleanly.
+- [x] Deriver restart recovers cleanly.
 - [x] Full LXC reboot returns both services to active state.
 
 ## E. Application functionality
@@ -93,10 +93,10 @@ Run these tests for each provider mode that will be advertised as supported.
 
 ## F. Security/persistence
 
-- [ ] `/etc/honcho/environment` is root-only.
-- [ ] `/etc/honcho/installation.json` is root-only.
-- [ ] Honcho long-running processes run as `honcho`, not root.
-- [ ] Database role is not PostgreSQL superuser.
+- [x] `/etc/honcho/environment` is root-only.
+- [x] `/etc/honcho/installation.json` is root-only.
+- [x] Honcho long-running processes run as `honcho`, not root.
+- [x] Database role is not PostgreSQL superuser.
 - [x] PostgreSQL data survives LXC reboot.
 - [x] Redis restarts cleanly after LXC reboot.
 - [ ] Honcho application data survives API/Deriver restart and LXC reboot.
@@ -187,6 +187,19 @@ Database state persisted: `alembic_version` remained `e4eba9cfaa6f`, Honcho data
 Release state persisted: `/opt/honcho/current` resolved to `/opt/honcho/releases/3.0.12-bd5fd4df62b5` and `/etc/honcho/installation.json` remained present.
 The complete native health helper passed after reboot, including Redis PING and the application SQLAlchemy database probe.
 This verifies service auto-start, PostgreSQL persistence, and Redis restart across LXC reboot. It does not yet prove persistence of real Honcho workspace/session/message data because application data has not yet been created for that test.
+```
+
+### 2026-08-19 - security identity and explicit restart recovery
+
+```text
+CT ID: 210
+Result: PASSED security identity and explicit service restart checks.
+Protected configuration files: `/etc/honcho/environment` and `/etc/honcho/installation.json` both reported mode 600 and ownership root:root.
+Service identities: `honcho-api.service` and `honcho-deriver.service` both reported User=honcho and Group=honcho.
+Database role query returned `honcho_user|f|f|f` for `rolsuper`, `rolcreatedb`, and `rolcreaterole`, confirming the application role is not a PostgreSQL superuser and cannot create databases or roles.
+API restart: `systemctl restart honcho-api.service` was followed by a successful `/health` recovery within the bounded retry loop.
+Deriver restart: `systemctl restart honcho-deriver.service` was followed by an active service after 12 seconds.
+Final native health helper passed after both explicit restarts, including API TCP/8000, `/health`, Redis PING, UTF8 database checks, pgvector, and the application SQLAlchemy database probe.
 ```
 
 ## Promotion gate
