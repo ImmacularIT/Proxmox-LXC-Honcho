@@ -146,7 +146,9 @@ install -d -o honcho -g honcho -m 0755 /opt/honcho/releases
 runuser -u honcho -- git clone --filter=blob:none --no-checkout "$HONCHO_REPOSITORY" "$BUILD_ROOT/source"
 runuser -u honcho -- git -C "$BUILD_ROOT/source" fetch --depth 1 origin "$HONCHO_COMMIT"
 runuser -u honcho -- git -C "$BUILD_ROOT/source" checkout --detach "$HONCHO_COMMIT"
-actual_commit="$(git -C "$BUILD_ROOT/source" rev-parse HEAD)"
+# Keep every Git operation on the temporary checkout under the account that
+# owns it. Running rev-parse as root triggers Git's safe.directory protection.
+actual_commit="$(runuser -u honcho -- git -C "$BUILD_ROOT/source" rev-parse HEAD)"
 [[ "$actual_commit" == "$HONCHO_COMMIT" ]] || fatal "Upstream checkout did not match pinned commit"
 actual_version="$(python3 -c 'import tomllib; print(tomllib.load(open("/var/tmp/honcho-native-build/source/pyproject.toml", "rb"))["project"]["version"])')"
 [[ "$actual_version" == "$HONCHO_VERSION" ]] || fatal "Pinned commit reports Honcho ${actual_version}, expected ${HONCHO_VERSION}"
