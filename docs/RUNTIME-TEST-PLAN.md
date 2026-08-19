@@ -157,7 +157,8 @@ First API failure: systemd status 203/EXEC because the generated `.venv/bin/fast
 Fix: API unit invokes FastAPI through the venv interpreter as `.venv/bin/python -m fastapi`; fresh installs now move the verified source to the final immutable release path before `uv sync`, so generated console-script shebangs reference the permanent venv path.
 Fix commits: 15127ad19a292b4ada98549e5b93e5aa63d30995, 8076eec5aef5c05a4b45b82841e4dde827f25833, 579efd3e656e1e15b41cdc6d69456aa053be09ed, 7f389ad0767c4b99c42382bd5669749df106509d
 Manual recovery: exact patched unit was installed and reloaded on CT 210. `/opt/honcho/current/.venv/bin/python` reported Python 3.11.14. The API then started successfully as PID 6502, imported `src.main:app`, connected to Redis, completed application startup, and Uvicorn bound `0.0.0.0:8000`.
-Observed active duration at evidence capture: 1 minute 5 seconds. The 10-minute sustained-service gate, `/health`, Deriver startup, and full native health check remain pending.
+Observed active duration before administrative stop: 2 minutes 48 seconds. At 20:51:31 UTC systemd sent SIGTERM, Uvicorn performed a clean application shutdown, systemd recorded `Result=success`, and `NRestarts=0`. This was an explicit service stop from the debugging workflow, not an application crash or sustained-runtime failure.
+The 10-minute sustained-service gate, `/health`, Deriver startup, and full native health check remain pending.
 ```
 
 ## Promotion gate
