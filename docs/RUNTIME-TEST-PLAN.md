@@ -2,7 +2,7 @@
 
 ## Status
 
-**Overall status: UNTESTED**
+**Overall status: IN PROGRESS**
 
 Repository/CI checks do not count as Proxmox runtime evidence. Mark an item passed only after it is exercised on a real supported Proxmox host and the result is recorded here.
 
@@ -110,7 +110,21 @@ Run these tests for each provider mode that will be advertised as supported.
 
 ## Evidence record
 
-Record real validation here before promotion:
+### 2026-08-19 - first real Proxmox installation attempt
+
+```text
+Date: 2026-08-19
+Tester: maintainer
+CT ID: 210
+Honcho commit: bd5fd4df62b5002b7aeff6e7f5a5237eb7157260
+Result: FAILED during pinned upstream checkout verification
+Observed: clone/fetch/checkout as honcho succeeded, then root-owned `git rev-parse HEAD` triggered Git safe.directory/dubious-ownership protection.
+Fix: commit verification changed to run as the checkout owner (`runuser -u honcho -- git ... rev-parse HEAD`). Regression validation added to reject the root-owned pattern.
+Fix commits: 4820cb6b89e427cb0add2815c19a1f27d5d5d427 and c553c22b89c3b817447d1bd07c7db56a198bae9a
+Rerun: pending on retained CT 210
+```
+
+Record subsequent real validation here before promotion:
 
 ```text
 Date:
