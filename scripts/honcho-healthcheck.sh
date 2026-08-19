@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Run diagnostics under a locale that is always available on Debian. Proxmox
+# host locale variables can otherwise leak through `pct exec` and make psql's
+# Perl helpers emit warnings for locales that are not generated in the guest.
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+
 fatal() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 ok() { printf 'PASS: %s\n' "$1"; }
 
