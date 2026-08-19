@@ -38,9 +38,12 @@ pass "No moving upstream Honcho branch reference"
 
 grep -q 'git -C "$BUILD_ROOT/source" fetch --depth 1 origin "$HONCHO_COMMIT"' install/honcho-install.sh \
   || fail "Installer does not fetch exact Honcho commit"
-grep -q 'actual_commit=.*rev-parse HEAD' install/honcho-install.sh \
-  || fail "Installer does not verify Honcho checkout"
-pass "Exact upstream checkout invariants"
+grep -q 'actual_commit="$(runuser -u honcho -- git -C "$BUILD_ROOT/source" rev-parse HEAD)"' install/honcho-install.sh \
+  || fail "Installer does not verify Honcho checkout as the checkout owner"
+if grep -q 'actual_commit="$(git -C "$BUILD_ROOT/source" rev-parse HEAD)"' install/honcho-install.sh; then
+  fail "Installer verifies the Honcho checkout as root and can trigger Git dubious-ownership protection"
+fi
+pass "Exact upstream checkout and Git ownership invariants"
 
 grep -q -- '--unprivileged 1' ct/honcho.sh || fail "Launcher does not force unprivileged LXC"
 grep -q -- '--features nesting=1' ct/honcho.sh || fail "Launcher does not set nesting=1"
